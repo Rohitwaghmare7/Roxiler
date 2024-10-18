@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchTransactions } from '../redux/store/transactionsSlice';
 import { fetchStatistics } from '../redux/store/statisticsSlice';
 import { fetchBarChartData } from '../redux/store/chartsSlice';
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { format } from "date-fns";
 
 import Button from "./Button";
@@ -13,7 +13,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./Car
 import Input from "./input";
 import { Select, SelectItem } from "./Select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./Table";
-import ChartContainer from "./ChartContainer";
+import { Bar } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function TransactionDashboard() {
   const dispatch = useDispatch();
@@ -25,6 +27,10 @@ export default function TransactionDashboard() {
   const statistics = useSelector((state) => state.statistics.data);
   const barChartData = useSelector((state) => state.charts.barChartData);
   const totalPages = useSelector((state) => state.transactions.totalPages);
+
+  useEffect(() => {
+    console.log("🚀 ~ TransactionDashboard ~ barChartData:", barChartData)
+  }, [barChartData]);
 
   useEffect(() => {
     dispatch(fetchTransactions({ search: searchTerm, month: parseInt(selectedMonth), page: currentPage, perPage: 10 }));
@@ -53,6 +59,35 @@ export default function TransactionDashboard() {
       setCurrentPage(currentPage + 1);
     }
   }
+
+  const chartData = {
+    labels: barChartData?.priceBuckets?.map(bucket => `$${bucket._id}`) || [],
+    datasets: [
+      {
+        label: 'Sold',
+        data: barChartData?.priceBuckets?.map(bucket => bucket.totalSold) || [],
+        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+      },
+      {
+        label: 'Not Sold',
+        data: barChartData?.priceBuckets?.map(bucket => bucket.totalNotSold) || [],
+        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+      }
+    ]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Price Range Distribution',
+      },
+    },
+  };
 
   return (
     <div className="container mx-auto p-4 space-y-8">
@@ -103,7 +138,6 @@ export default function TransactionDashboard() {
           </CardContent>
         </Card>
       </div>
-
 
       <Card>
         <CardHeader>
@@ -164,18 +198,9 @@ export default function TransactionDashboard() {
           <CardDescription>Number of items per price range for {format(new Date(2023, parseInt(selectedMonth) - 1, 1), "MMMM")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer className="h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="range" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="count" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+          <div style={{ height: '400px' }}>
+            <Bar data={chartData} options={chartOptions} />
+          </div>
         </CardContent>
       </Card>
     </div>
